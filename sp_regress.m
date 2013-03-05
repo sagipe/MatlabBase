@@ -111,7 +111,10 @@ function [coefficient_estimates stats response_hat] = sp_regress(response, predi
                 log_disp(['sp_regress: eliminated ' num2str(sum(nan_lidx)) '/' num2str(length(response)) ' NaN values']);
             end
             
-            stats = aresbuild(sp_zscore(predictors(~nan_lidx,:)), sp_zscore(response(~nan_lidx)));
+            predictors = sp_zscore(predictors(~nan_lidx,:));
+            response   = sp_zscore(response(~nan_lidx));
+            
+            stats = aresbuild(predictors, response);
             coefficient_estimates = stats.coefs; 
 
 %             model         : The built ARES model a structure with the following elements:
@@ -130,7 +133,9 @@ function [coefficient_estimates stats response_hat] = sp_regress(response, predi
 %               maxX        : Vector of maximums for input variables (used for t1 and t2 placements as well as for model plotting).
 %               endSpan     : The used value of endSpan.
             if(nargout > 2)
-                error('TBC');
+                response_hat  = sp_spline_predict(stats, predictors);
+                stats.rsquare = sp_compute_r2(response, response_hat);
+                stats.rmse    = sp_compute_RMSE(response, response_hat);
             end
             
         otherwise
