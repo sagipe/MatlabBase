@@ -1,5 +1,5 @@
-function [unique_vals unique_vals_counts unique_vals_idx] = sp_unique(data)
-% function [unique_vals unique_vals_counts unique_vals_idx] = sp_unique(data)
+function [unique_vals unique_vals_counts unique_vals_grouped_idx unique_vals_idx] = sp_unique(data)
+% function [unique_vals unique_vals_counts unique_vals_grouped_idx unique_vals_idx] = sp_unique(data)
 %
 % A wrapper to unique, which returns more useful information:
 %
@@ -11,12 +11,15 @@ function [unique_vals unique_vals_counts unique_vals_idx] = sp_unique(data)
 % unique_vals_idx includes indices of elements belonging to every unique value
 %
 % INPUTS:
-% data: [double array] OR [matrix] OR [cell array of strings]
+% data: [double array][1xN][Nx1] OR [matrix][NxD] OR [cell array of strings][1xN][Nx1]
 %
 % OUTPUTS:
-% unique_vals       : [double array] with the same orientation as vec
-% unique_vals_counts: [double array] with the same orientation as vec, includes counts of how many elements are present for every unique value
-% unique_vals_idx   : [cell array] with the indices
+% unique_vals       : [double array][1xC] (with the same orientation when data is a vector) or [CxD] for matrix
+% unique_vals_counts: [double array][1xC] (with the same orientation when data is a vector), 
+%                                         includes counts of how many elements are present for every unique value
+% unique_vals_grouped_idx: [cell array][1xC] with the indices in data, for every unique value group
+% unique_vals_idx   : [double array][1xN] with indices in unique_vals for every element in data.
+%                                         NOT VALID WHEN data is a vector, since we ignore NaN values
 %
 % Sagi Perel, 04/2009
 % Updated 03/04/13 to handle cell arrays of strings
@@ -36,15 +39,15 @@ function [unique_vals unique_vals_counts unique_vals_idx] = sp_unique(data)
         if(~all(cellfun(@ischar,data)))
             error('sp_unique: cell array data must contain only strings');
         end
-        unique_vals = unique(data); % will fail if vec is not a cell array of strings
+        [unique_vals, ~, unique_vals_idx] = unique(data); % will fail if vec is not a cell array of strings
         num_unique_vals = length(unique_vals);
         
-        unique_vals_idx = cell(1,num_unique_vals);
+        unique_vals_grouped_idx = cell(1,num_unique_vals);
         unique_vals_counts = zeros(1,num_unique_vals);
 
         for i=1:num_unique_vals
-            unique_vals_idx{i} = find( cellfun(@(x)(strcmp(unique_vals{i},x)),data) );
-            unique_vals_counts(i) = length(unique_vals_idx{i});
+            unique_vals_grouped_idx{i} = find( cellfun(@(x)(strcmp(unique_vals{i},x)),data) );
+            unique_vals_counts(i) = length(unique_vals_grouped_idx{i});
         end
     elseif(sp_ismatrix(data))
         % double matrix: [NxM]
@@ -52,28 +55,29 @@ function [unique_vals unique_vals_counts unique_vals_idx] = sp_unique(data)
         % nan_rows_lidx = any(isnan(data),2);
         % [unique_vals, ~, unique_row_number] = unique(data(~nan_rows_lidx,:),'rows'); % unique_vals is [num_unique_rows x M]
         
-        [unique_vals, ~, unique_row_number] = unique(data,'rows'); % unique_vals is [num_unique_rows x M]
+        [unique_vals, ~, unique_vals_idx] = unique(data,'rows'); % unique_vals is [num_unique_rows x M]
         % unique_row_number indicates for every row in data
         num_unique_vals = size(unique_vals,1);
         
-        unique_vals_idx = cell(1,num_unique_vals);
+        unique_vals_grouped_idx = cell(1,num_unique_vals);
         unique_vals_counts = zeros(1,num_unique_vals);
         
         for i=1:num_unique_vals
-            unique_vals_idx{i}    = find( unique_row_number == i );
-            unique_vals_counts(i) = length(unique_vals_idx{i});
+            unique_vals_grouped_idx{i}    = find( unique_vals_idx == i );
+            unique_vals_counts(i) = length(unique_vals_grouped_idx{i});
         end
     else
         % double array: ignore NaN values
         unique_vals = unique(data(~isnan(data)));
         num_unique_vals = length(unique_vals);
 
-        unique_vals_idx = cell(1,num_unique_vals);
+        unique_vals_grouped_idx = cell(1,num_unique_vals);
         unique_vals_counts = zeros(1,num_unique_vals);
 
         for i=1:num_unique_vals
-            unique_vals_idx{i} = find(data == unique_vals(i));
-            unique_vals_counts(i) = length(unique_vals_idx{i});
+            unique_vals_grouped_idx{i} = find(data == unique_vals(i));
+            unique_vals_counts(i) = length(unique_vals_grouped_idx{i});
         end
+        unique_vals_idx = []; % we have to adjust indices since we ignore NaN values
     end
     
