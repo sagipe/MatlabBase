@@ -31,20 +31,32 @@ mexFunction(
     double epsilon = 0.00001;
 
     //sanity check for input arguments
-	if( num_input_args != 2) mexErrMsgTxt( "Cfind_first_bigger_sample_in_array.c: wrong syntax: Cfind_first_bigger_sample_in_array(array, value)\n");
-    if( mxGetN(input_arg[0]) != 1 && mxGetM(input_arg[0]) != 1 ) mexErrMsgTxt( "Cfind_first_bigger_sample_in_array.c: the array must be a vector\n");
+	if( num_input_args < 2 || num_input_args > 3) mexErrMsgTxt( "Cfind_first_bigger_sample_in_array2.c: wrong syntax: Cfind_first_bigger_sample_in_array2(array, value, [DEBUG])\n");
+    if( mxGetN(input_arg[0]) != 1 && mxGetM(input_arg[0]) != 1 ) mexErrMsgTxt( "Cfind_first_bigger_sample_in_array2.c: the array must be a vector\n");
     array_type = mxGetClassID(input_arg[0]);
-    if( array_type != mxDOUBLE_CLASS && array_type != mxSINGLE_CLASS ) mexErrMsgTxt( "Cfind_first_bigger_sample_in_array.c: the array must be a column vector of type double or float\n");
+    if( array_type != mxDOUBLE_CLASS && array_type != mxSINGLE_CLASS ) mexErrMsgTxt( "Cfind_first_bigger_sample_in_array2.c: the array must be a column vector of type double or float\n");
     
-    if( mxGetN(input_arg[1]) != 1) mexErrMsgTxt( "Cfind_first_bigger_sample_in_array.c: the value must be a double\n");
-    if( mxGetM(input_arg[1]) != 1) mexErrMsgTxt( "Cfind_first_bigger_sample_in_array.c: the value must be a double\n");
+    if( mxGetN(input_arg[1]) != 1) mexErrMsgTxt( "Cfind_first_bigger_sample_in_array2.c: the value must be a double\n");
+    if( mxGetM(input_arg[1]) != 1) mexErrMsgTxt( "Cfind_first_bigger_sample_in_array2.c: the value must be a double\n");
+
+    if(num_input_args == 3)
+    {
+        array_type = mxGetClassID(input_arg[2]);
+        if( array_type != mxDOUBLE_CLASS && array_type != mxSINGLE_CLASS ) mexErrMsgTxt( "Cfind_first_bigger_sample_in_array2.c: DEBUG must be a double or float\n");
+        if( mxGetN(input_arg[2]) != 1) mexErrMsgTxt( "Cfind_first_bigger_sample_in_array2.c: DEBUG must be a double or float\n");
+        if( mxGetM(input_arg[2]) != 1) mexErrMsgTxt( "Cfind_first_bigger_sample_in_array2.c: DEBUG must be a double or float\n");
+        ptr = (double*) mxGetData( input_arg[2]);
+        value = *ptr;
+        if(value > 0.0)
+            debug = 1;
+    }   
     
     array_length = (mxGetM(input_arg[0]) > mxGetN(input_arg[0])) ? mxGetM(input_arg[0]) : mxGetN(input_arg[0]);
     
     //read input arguments:
     ptr = (double*) mxGetData( input_arg[1]);
     value = *ptr;
-  if(debug)
+    if(debug)
         printf("array_length=%d,value=%f\n",array_length,value);
    
 
@@ -69,59 +81,58 @@ mexFunction(
 		    {
 				
 			    this_array_length = end_idx - start_idx + 1;
-                            if(debug)
-                            	printf("start_idx=%d end_idx=%d (%d)",start_idx, end_idx, this_array_length);
+                if(debug)
+                    printf("start_idx=%d end_idx=%d (%d)",start_idx, end_idx, this_array_length);
 
 			    if(this_array_length <= 20)
 			    {
 				    middle_idx = search_array_serial(array, value, start_idx, this_array_length);
-                                    if(debug)
-					printf("\nthis_array_length<=20: middle_idx=%d\n",middle_idx);
+                    if(debug)
+                        printf("\nthis_array_length<=20: middle_idx=%d\n",middle_idx);
 				    if(middle_idx < 0)
 				    {
 					    output_arg[0] = mxCreateDoubleMatrix(0, 0, mxREAL);
 					    return;
 				    }else{
-
 					    output_arg[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
 					    *mxGetPr(output_arg[0]) = middle_idx;
 					    return;
-				    }	
+				    }
 			    }
 
 			    middle_idx = (this_array_length % 2 == 0 )? (start_idx+(this_array_length/2)) : (start_idx+((this_array_length-1)/2));
-                            if(debug)
-				printf(" middle_idx=%d,val=%f\n",middle_idx,array[middle_idx]);
+                if(debug)
+                    printf(" middle_idx=%d,val=%f\n",middle_idx,array[middle_idx]);
 			    //shrink the array size by half
 			    if(mxIsNaN(array[middle_idx]))
 			    {
-                                   if(middle_idx == start_idx)
-                                   {
-                                        output_arg[0] = mxCreateDoubleMatrix(0, 0, mxREAL);
-                                        return;
-                                   }else{
-			           	middle_idx = middle_idx -1;
-                                   }
-	                    }else{
-                                    /*
-                                    //if the middle_idx is exactly the value we are looking for- numerical issues might cause to miss it
+                   if(middle_idx == start_idx)
+                   {
+                        output_arg[0] = mxCreateDoubleMatrix(0, 0, mxREAL);
+                        return;
+                   }else{
+                        middle_idx = middle_idx -1;
+                   }
+                }else{
+                    /*
+                    //if the middle_idx is exactly the value we are looking for- numerical issues might cause to miss it
 				    if(array[middle_idx]-epsilon <= value && array[middle_idx]+epsilon >= value)
-			            {
+                    {
 				   	output_arg[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
                                         *mxGetPr(output_arg[0]) = middle_idx+1;
                                         return;
-                                    }
+                    }
 				    */
 
-	                            //else continue as usual
+                    //else continue as usual
 				    if((array[middle_idx] - value) > 0)
 				    {
 					    end_idx = middle_idx;	
 				    }else{
 					    start_idx  = middle_idx;
-			            }	    
+                    }
 			    }
-		    }	    
+		    }
 
 		    break;
 	    case mxSINGLE_CLASS:

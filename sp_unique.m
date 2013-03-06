@@ -19,7 +19,7 @@ function [unique_vals unique_vals_counts unique_vals_grouped_idx unique_vals_idx
 %                                         includes counts of how many elements are present for every unique value
 % unique_vals_grouped_idx: [cell array][1xC] with the indices in data, for every unique value group
 % unique_vals_idx   : [double array][1xN] with indices in unique_vals for every element in data.
-%                                         NOT VALID WHEN data is a vector, since we ignore NaN values
+%                                         NOT VALID WHEN data is a vector containing NaN values
 %
 % Sagi Perel, 04/2009
 % Updated 03/04/13 to handle cell arrays of strings
@@ -68,7 +68,8 @@ function [unique_vals unique_vals_counts unique_vals_grouped_idx unique_vals_idx
         end
     else
         % double array: ignore NaN values
-        unique_vals = unique(data(~isnan(data)));
+        nan_lidx = isnan(data);
+        [unique_vals, ~, unique_vals_idx] = unique(data(~nan_lidx));
         num_unique_vals = length(unique_vals);
 
         unique_vals_grouped_idx = cell(1,num_unique_vals);
@@ -78,6 +79,9 @@ function [unique_vals unique_vals_counts unique_vals_grouped_idx unique_vals_idx
             unique_vals_grouped_idx{i} = find(data == unique_vals(i));
             unique_vals_counts(i) = length(unique_vals_grouped_idx{i});
         end
-        unique_vals_idx = []; % we have to adjust indices since we ignore NaN values
+        
+        if(any(nan_lidx))
+            unique_vals_idx = []; % we have to adjust indices since we ignore NaN values
+        end
     end
     
